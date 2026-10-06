@@ -1,21 +1,15 @@
 import React, { useState } from 'react';
-import { Mail, Send, RefreshCw, Trash2, CheckSquare, Square, Eye, Edit3, X, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Mail, Send, RefreshCw, Trash2, CheckSquare, Square, Sparkles } from 'lucide-react';
 import useSWR from 'swr';
 import api from '../lib/api';
 import { Loader } from '../components/Loader';
 import { toast } from 'sonner';
 
 export const Subscribers: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [sending, setSending] = useState(false);
-
-  // Email form state
-  const [subject, setSubject] = useState('');
-  const [content, setContent] = useState('');
-  const [targetOption, setTargetOption] = useState<'all' | 'selected'>('all');
-  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
   const { data, error, mutate, isLoading } = useSWR('/subscribers', (url) =>
     api.get(url).then((res) => res.data)
@@ -52,76 +46,11 @@ export const Subscribers: React.FC = () => {
     }
   };
 
-  const handleOpenComposeModal = (preselectSelected: boolean = false) => {
+  const handleOpenCompose = (preselectSelected: boolean = false) => {
     if (preselectSelected && selectedIds.length > 0) {
-      setTargetOption('selected');
+      navigate(`/subscribers/compose?selected=${selectedIds.join(',')}`);
     } else {
-      setTargetOption('all');
-    }
-    if (!subject) setSubject('Thoughtful Celebrations & Gift Drops | Mora Moments');
-    if (!content) {
-      setContent(
-`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #fffdfa; border: 1px solid #e7cfc4; padding: 30px; border-radius: 12px;">
-  <div style="text-align: center; margin-bottom: 24px;">
-    <h1 style="color: #674a4f; font-family: Georgia, serif; font-size: 28px; margin: 0;">Mora Moments</h1>
-    <p style="color: #8c6d71; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;">Artisanal Gift Studio</p>
-  </div>
-  <hr style="border: 0; border-top: 1px solid #e7cfc4; margin: 20px 0;" />
-  <h2 style="color: #321e22; font-size: 20px;">Dear Gifting Enthusiast,</h2>
-  <p style="color: #4a3b3d; line-height: 1.6; font-size: 15px;">
-    We are thrilled to share our latest curated hampers and handcrafted surprise collections designed to bring warmth and delight to every celebration.
-  </p>
-  <div style="text-align: center; margin: 30px 0;">
-    <a href="https://moramoments.in/shop" style="background-color: #674a4f; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
-      Explore New Gift Drops
-    </a>
-  </div>
-  <p style="color: #6b5558; font-size: 13px; line-height: 1.5;">
-    Warmest regards,<br/>
-    <strong>The Mora Moments Team</strong>
-  </p>
-</div>`
-      );
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSendMailBroadcast = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!subject.trim()) {
-      toast.error('Please enter an email subject.');
-      return;
-    }
-    if (!content.trim()) {
-      toast.error('Please enter email content.');
-      return;
-    }
-
-    const selectedEmails = subscribers
-      .filter((s: any) => selectedIds.includes(s.id))
-      .map((s: any) => s.email);
-
-    if (targetOption === 'selected' && selectedEmails.length === 0) {
-      toast.error('Please select at least one subscriber recipient.');
-      return;
-    }
-
-    setSending(true);
-    try {
-      const payload = {
-        subject: subject.trim(),
-        content: content.trim(),
-        sendToAll: targetOption === 'all',
-        recipientEmails: targetOption === 'selected' ? selectedEmails : undefined,
-      };
-
-      const res = await api.post('/subscribers/send-email', payload);
-      toast.success(res.data?.message || 'Mail sending enqueued successfully via Resend queue!');
-      setIsModalOpen(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to enqueue mail sending campaign.');
-    } finally {
-      setSending(false);
+      navigate('/subscribers/compose');
     }
   };
 
@@ -154,7 +83,7 @@ export const Subscribers: React.FC = () => {
           </button>
 
           <button
-            onClick={() => handleOpenComposeModal(false)}
+            onClick={() => handleOpenCompose(false)}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
               padding: '0.75rem 1.5rem', borderRadius: '8px',
@@ -193,7 +122,7 @@ export const Subscribers: React.FC = () => {
                 {selectedIds.length} subscriber(s) selected
               </span>
               <button
-                onClick={() => handleOpenComposeModal(true)}
+                onClick={() => handleOpenCompose(true)}
                 style={{
                   background: 'var(--primary-accent)', color: 'white', border: 'none',
                   padding: '0.4rem 0.85rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem',
@@ -293,177 +222,7 @@ export const Subscribers: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Resend Email Campaign Compose Modal */}
-      {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-            backdropFilter: 'blur(4px)', padding: '1rem'
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--bg-color)', width: '100%', maxWidth: '750px',
-              borderRadius: '16px', border: '1px solid var(--border-color)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden',
-              display: 'flex', flexDirection: 'column', maxHeight: '90vh'
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-color)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Send size={20} color="var(--primary-accent)" />
-                <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Compose Resend Mail Broadcast</h2>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <form onSubmit={handleSendMailBroadcast} style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '1.5rem', gap: '1.25rem' }}>
-              {/* Target Selection */}
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                  Recipients Target:
-                </label>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="radio"
-                      name="targetOption"
-                      checked={targetOption === 'all'}
-                      onChange={() => setTargetOption('all')}
-                    />
-                    <span>All Subscribers ({subscribers.length})</span>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="radio"
-                      name="targetOption"
-                      checked={targetOption === 'selected'}
-                      onChange={() => setTargetOption('selected')}
-                    />
-                    <span>Selected Subscribers Only ({selectedIds.length})</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Subject */}
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>
-                  Email Subject Line:
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Exclusive Offer | Mora Moments Luxury Hampers"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  style={{
-                    width: '100%', padding: '0.65rem 1rem', borderRadius: '8px',
-                    border: '1px solid var(--border-color)', background: 'var(--surface-color)',
-                    outline: 'none', fontSize: '0.9rem', color: 'var(--text-primary)'
-                  }}
-                />
-              </div>
-
-              {/* Tabs for Edit / Preview */}
-              <div>
-                <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.75rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('edit')}
-                    style={{
-                      padding: '0.5rem 1rem', background: 'none', border: 'none',
-                      borderBottom: activeTab === 'edit' ? '2px solid var(--primary-accent)' : '2px solid transparent',
-                      fontWeight: activeTab === 'edit' ? 600 : 400,
-                      color: activeTab === 'edit' ? 'var(--primary-accent)' : 'var(--text-secondary)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'
-                    }}
-                  >
-                    <Edit3 size={16} /> Edit HTML / Body
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('preview')}
-                    style={{
-                      padding: '0.5rem 1rem', background: 'none', border: 'none',
-                      borderBottom: activeTab === 'preview' ? '2px solid var(--primary-accent)' : '2px solid transparent',
-                      fontWeight: activeTab === 'preview' ? 600 : 400,
-                      color: activeTab === 'preview' ? 'var(--primary-accent)' : 'var(--text-secondary)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'
-                    }}
-                  >
-                    <Eye size={16} /> Live Preview
-                  </button>
-                </div>
-
-                {activeTab === 'edit' ? (
-                  <textarea
-                    rows={12}
-                    required
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Enter email HTML body content..."
-                    style={{
-                      width: '100%', padding: '1rem', borderRadius: '8px',
-                      border: '1px solid var(--border-color)', background: 'var(--surface-color)',
-                      fontFamily: 'monospace', fontSize: '0.85rem', outline: 'none',
-                      color: 'var(--text-primary)', resize: 'vertical'
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      border: '1px solid var(--border-color)', borderRadius: '8px',
-                      padding: '1rem', minHeight: '250px', maxHeight: '350px',
-                      overflowY: 'auto', background: '#ffffff'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: content }}
-                  />
-                )}
-              </div>
-
-              {/* Modal Footer / Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  disabled={sending}
-                  style={{
-                    padding: '0.65rem 1.25rem', borderRadius: '8px',
-                    border: '1px solid var(--border-color)', background: 'var(--surface-color)',
-                    cursor: 'pointer', fontWeight: 500
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={sending}
-                  style={{
-                    padding: '0.65rem 1.5rem', borderRadius: '8px',
-                    border: 'none', background: 'var(--primary-accent)', color: '#ffffff',
-                    cursor: sending ? 'not-allowed' : 'pointer', fontWeight: 600,
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: sending ? 0.7 : 1
-                  }}
-                >
-                  <Send size={18} />
-                  <span>{sending ? 'Queueing in Resend...' : 'Enqueue & Send via Resend'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+

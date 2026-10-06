@@ -20,6 +20,7 @@ import { Events } from './pages/Events';
 import { Crawler } from './pages/Crawler';
 import { GiftBuilder } from './pages/GiftBuilder';
 import { Subscribers } from './pages/Subscribers';
+import { ComposeMail } from './pages/ComposeMail';
 import { Toaster } from 'sonner';
 import { SWRConfig } from 'swr';
 
@@ -76,6 +77,7 @@ const App: React.FC = () => {
             <Route path="events" element={<Events />} />
             <Route path="crawler" element={<Crawler />} />
             <Route path="subscribers" element={<Subscribers />} />
+            <Route path="subscribers/compose" element={<ComposeMail />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

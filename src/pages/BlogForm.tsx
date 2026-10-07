@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Save, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ export const BlogForm: React.FC = () => {
     metaKeywords: ''
   });
 
-  const handleEditorUpload = async (file: File) => {
+  const handleEditorUpload = useCallback(async (file: File) => {
     const fd = new FormData();
     fd.append('image', file);
     try {
@@ -38,13 +38,17 @@ export const BlogForm: React.FC = () => {
       toast.error('Failed to upload image to editor');
       return '';
     }
-  };
+  }, []);
 
   const editor = useCreateBlockNote({ uploadFile: handleEditorUpload });
   const [editorReady, setEditorReady] = useState(false);
+  const loadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isEdit) {
+    if (isEdit && id) {
+      if (loadedIdRef.current === id) return;
+      loadedIdRef.current = id;
+
       api.get(`/blogs/${id}`).then(async res => {
         const blog = res.data.data;
         setFormData({
@@ -52,7 +56,7 @@ export const BlogForm: React.FC = () => {
           slug: blog.slug || '',
           content: blog.content || '',
           image: blog.image || '',
-          isPublished: blog.isPublished,
+          isPublished: blog.isPublished ?? true,
           metaTitle: blog.metaTitle || '',
           metaDescription: blog.metaDescription || '',
           metaKeywords: blog.metaKeywords || ''
@@ -119,11 +123,25 @@ export const BlogForm: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      let contentHtml = formData.content;
+      if (editor) {
+        try {
+          contentHtml = await editor.blocksToHTMLLossy(editor.document);
+        } catch (e) {
+          console.error('Failed to export editor content to HTML', e);
+        }
+      }
+
+      const payload = {
+        ...formData,
+        content: contentHtml
+      };
+
       if (isEdit) {
-        await api.patch(`/blogs/${id}`, formData);
+        await api.patch(`/blogs/${id}`, payload);
         toast.success('Blog updated successfully');
       } else {
-        await api.post('/blogs', formData);
+        await api.post('/blogs', payload);
         toast.success('Blog created successfully');
       }
       navigate('/blogs');

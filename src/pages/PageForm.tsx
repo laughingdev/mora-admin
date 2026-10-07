@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,7 +23,7 @@ export const PageForm: React.FC = () => {
     metaKeywords: ''
   });
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = useCallback(async (file: File) => {
     const fd = new FormData();
     fd.append('image', file);
     try {
@@ -35,20 +35,24 @@ export const PageForm: React.FC = () => {
       toast.error('Failed to upload image');
       return '';
     }
-  };
+  }, []);
 
   const editor = useCreateBlockNote({ uploadFile: handleUpload });
   const [editorReady, setEditorReady] = useState(false);
+  const loadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isEdit) {
+    if (isEdit && id) {
+      if (loadedIdRef.current === id) return;
+      loadedIdRef.current = id;
+
       api.get(`/pages/${id}`).then(async res => {
         const page = res.data.data;
         setFormData({
           title: page.title || '',
           slug: page.slug || '',
           content: page.content || '',
-          isPublished: page.isPublished,
+          isPublished: page.isPublished ?? true,
           metaTitle: page.metaTitle || '',
           metaDescription: page.metaDescription || '',
           metaKeywords: page.metaKeywords || ''
@@ -94,11 +98,25 @@ export const PageForm: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      let contentHtml = formData.content;
+      if (editor) {
+        try {
+          contentHtml = await editor.blocksToHTMLLossy(editor.document);
+        } catch (e) {
+          console.error('Failed to export editor content to HTML', e);
+        }
+      }
+
+      const payload = {
+        ...formData,
+        content: contentHtml
+      };
+
       if (isEdit) {
-        await api.patch(`/pages/${id}`, formData);
+        await api.patch(`/pages/${id}`, payload);
         toast.success('Page updated successfully');
       } else {
-        await api.post('/pages', formData);
+        await api.post('/pages', payload);
         toast.success('Page created successfully');
       }
       navigate('/pages');

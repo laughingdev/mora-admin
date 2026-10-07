@@ -191,7 +191,7 @@ export const BlogForm: React.FC = () => {
     }
   };
 
-  const saveBlog = async (shouldNavigateAway = false) => {
+  const saveBlog = useCallback(async (shouldNavigateAway = false) => {
     setLoading(true);
     try {
       let contentHtml = formData.content;
@@ -232,23 +232,19 @@ export const BlogForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [editor, formData, id, isEdit, navigate, draftKey]);
 
-  // Prevent form submission on Enter keypress inside text inputs
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT') {
+  // Support Ctrl+S / Cmd+S shortcut to save draft quickly
+  useEffect(() => {
+    const handleShortcut = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
+        saveBlog(false);
       }
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Default form submit stays on page (does not automatically close)
-    saveBlog(false);
-  };
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [saveBlog]);
 
   const handleEditorChange = async () => {
     try {
@@ -347,8 +343,8 @@ export const BlogForm: React.FC = () => {
         </div>
       )}
 
-      {/* Main Form */}
-      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 350px' }}>
+      {/* Main Layout Container */}
+      <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 350px' }}>
         <div className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Blog Title</label>
@@ -493,7 +489,7 @@ export const BlogForm: React.FC = () => {
             </div>
           </div>
         </div>
-      </form>
+      </div>
 
       {/* Full Screen Editor Overlay Mode */}
       {isFullscreen && (

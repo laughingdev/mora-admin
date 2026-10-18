@@ -36,15 +36,21 @@ export const Products: React.FC = () => {
     setPage(1);
   }, [searchParam]);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-    const toastId = toast.loading('Deleting product...');
+  const handleDelete = async (id: string, name?: string) => {
+    const displayName = name ? ` "${name}"` : '';
+    if (!window.confirm(`Are you sure you want to delete the product${displayName}? This action cannot be undone.`)) return;
+    const toastId = toast.loading(`Deleting product${displayName}...`);
     try {
       await api.delete(`/products/${id}`);
-      mutate();
-      toast.success('Product deleted', { id: toastId });
+      await mutate();
+      toast.success(`Product${displayName} deleted successfully`, { id: toastId });
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete product', { id: toastId });
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error?.details ||
+        err.message ||
+        'Failed to delete product. Please check pending orders or try again.';
+      toast.error(errorMsg, { id: toastId, duration: 7000 });
     }
   };
 
@@ -223,7 +229,7 @@ export const Products: React.FC = () => {
                               <Edit2 size={18} />
                             </button>
                             <button 
-                              onClick={() => handleDelete(product.id)}
+                              onClick={() => handleDelete(product.id, product.name)}
                               style={{ background: 'transparent', border: 'none', color: 'var(--danger-accent)', cursor: 'pointer' }} 
                               title="Delete"
                             >
@@ -257,7 +263,7 @@ export const Products: React.FC = () => {
                         <button onClick={() => navigate(`/products/edit/${product.id}`)} style={{ background: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                           <Edit2 size={14} color="var(--text-primary)" />
                         </button>
-                        <button onClick={() => handleDelete(product.id)} style={{ background: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                        <button onClick={() => handleDelete(product.id, product.name)} style={{ background: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                           <Trash2 size={14} color="var(--danger-accent)" />
                         </button>
                       </div>

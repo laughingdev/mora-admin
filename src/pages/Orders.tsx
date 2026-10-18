@@ -522,11 +522,11 @@ export const Orders: React.FC = () => {
                         <tr key={item.id}>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              {item.product?.images?.[0]?.imageUrl && (
-                                <img src={item.product.images[0].imageUrl} alt={item.product.name} style={{ width: '36px', height: '36px', borderRadius: '4px', objectFit: 'cover' }} />
+                              {(item.imageUrl || item.product?.images?.[0]?.imageUrl) && (
+                                <img src={item.imageUrl || item.product?.images?.[0]?.imageUrl} alt={item.productName || item.product?.name || 'Product'} style={{ width: '36px', height: '36px', borderRadius: '4px', objectFit: 'cover' }} />
                               )}
                               <div>
-                                <div style={{ fontWeight: 600 }}>{item.product?.name || 'Product'}</div>
+                                <div style={{ fontWeight: 600 }}>{item.productName || item.product?.name || 'Product'}</div>
                                 {item.variant && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Variant: {item.variant.name}</div>}
                               </div>
                             </div>

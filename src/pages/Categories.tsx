@@ -10,6 +10,7 @@ export const Categories: React.FC = () => {
   const { data: categories = [], isLoading: loading, mutate } = useSWR('/categories', url => api.get(url).then(res => res.data.data));
 
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingSectionImage, setUploadingSectionImage] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState('');
@@ -21,6 +22,7 @@ export const Categories: React.FC = () => {
     description: '',
     parentId: '',
     image: '',
+    sectionImage: '',
     featured: false,
     metaTitle: '',
     metaDescription: '',
@@ -38,24 +40,28 @@ export const Categories: React.FC = () => {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'image' | 'sectionImage') => {
     if (!e.target.files || e.target.files.length === 0) return;
 
     const fd = new FormData();
     fd.append('image', e.target.files[0]);
 
-    setUploadingImage(true);
-    const toastId = toast.loading('Uploading image...');
+    if (field === 'image') setUploadingImage(true);
+    else setUploadingSectionImage(true);
+
+    const label = field === 'image' ? 'card' : 'section';
+    const toastId = toast.loading(`Uploading ${label} image...`);
     try {
       const res = await api.post('/uploads', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setFormData(prev => ({ ...prev, image: res.data.data.url }));
-      toast.success('Image uploaded', { id: toastId });
+      setFormData(prev => ({ ...prev, [field]: res.data.data.url }));
+      toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} image uploaded`, { id: toastId });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to upload image', { id: toastId });
     } finally {
-      setUploadingImage(false);
+      if (field === 'image') setUploadingImage(false);
+      else setUploadingSectionImage(false);
       if (e.target) e.target.value = '';
     }
   };
@@ -65,7 +71,8 @@ export const Categories: React.FC = () => {
     try {
       const dataToSubmit: any = { ...formData };
       if (!dataToSubmit.parentId) dataToSubmit.parentId = null;
-      if (!dataToSubmit.image) dataToSubmit.image = undefined;
+      if (!dataToSubmit.image) dataToSubmit.image = null;
+      if (!dataToSubmit.sectionImage) dataToSubmit.sectionImage = null;
       if (dataToSubmit.slug) {
         dataToSubmit.slug = dataToSubmit.slug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
       }
@@ -97,6 +104,7 @@ export const Categories: React.FC = () => {
       description: cat.description || '',
       parentId: cat.parentId || '',
       image: cat.image || '',
+      sectionImage: cat.sectionImage || '',
       featured: Boolean(cat.featured),
       metaTitle: cat.metaTitle || '',
       metaDescription: cat.metaDescription || '',
@@ -137,7 +145,7 @@ export const Categories: React.FC = () => {
   const openAddModal = () => {
     setIsEditing(false);
     setActiveTab('basic');
-    setFormData({ name: '', slug: '', description: '', parentId: '', image: '', featured: false, metaTitle: '', metaDescription: '', metaKeywords: '' });
+    setFormData({ name: '', slug: '', description: '', parentId: '', image: '', sectionImage: '', featured: false, metaTitle: '', metaDescription: '', metaKeywords: '' });
     setIsModalOpen(true);
   };
 
@@ -146,8 +154,8 @@ export const Categories: React.FC = () => {
     setTimeout(() => {
       setIsEditing(false);
       setCurrentId('');
-      setFormData({ name: '', slug: '', description: '', parentId: '', image: '', featured: false, metaTitle: '', metaDescription: '', metaKeywords: '' });
-    }, 300);
+      setFormData({ name: '', slug: '', description: '', parentId: '', image: '', sectionImage: '', featured: false, metaTitle: '', metaDescription: '', metaKeywords: '' });
+    }, 200);
   };
 
   // Helper to visually build tree
@@ -217,9 +225,15 @@ export const Categories: React.FC = () => {
                     <Folder size={20} color="var(--primary-accent)" style={{ flexShrink: 0 }} />
                   )}
 
-                  {cat.image && (
-                    <img src={cat.image} alt={cat.name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-                  )}
+                  {/* Miniature Thumbnails: Card Image & Section Image */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {cat.image && (
+                      <img src={cat.image} alt="Card" title="Card Image (Home & Grid)" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border-color)' }} />
+                    )}
+                    {cat.sectionImage && (
+                      <img src={cat.sectionImage} alt="Section" title="Section Image (Top Hamburger & Banner)" style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border-color)' }} />
+                    )}
+                  </div>
 
                   <div>
                     <div style={{ fontWeight: cat.depth === 0 ? 600 : 500, color: 'var(--text-primary)' }}>{cat.name}</div>
@@ -313,27 +327,80 @@ export const Categories: React.FC = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>Parent Category</label>
-                      <select name="parentId" value={formData.parentId} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', outline: 'none', color: 'var(--text-primary)' }}>
-                        <option value="">None (Top Level)</option>
-                        {categoryTree.filter(c => c.id !== currentId).map(c => (
-                          <option key={c.id} value={c.id}>
-                            {'\u00A0'.repeat(c.depth * 4)}{c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>Category Image</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>Parent Category</label>
+                    <select name="parentId" value={formData.parentId} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', outline: 'none', color: 'var(--text-primary)' }}>
+                      <option value="">None (Top Level)</option>
+                      {categoryTree.filter(c => c.id !== currentId).map(c => (
+                        <option key={c.id} value={c.id}>
+                          {'\u00A0'.repeat(c.depth * 4)}{c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Dual Images: Card Image vs Section Image */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                    {/* 1. Card Image */}
+                    <div style={{ padding: '0.875rem', background: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        <label style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>1. Card Image</label>
                         {formData.image && (
-                          <img src={formData.image} alt="Preview" style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover' }} />
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                            style={{ background: 'none', border: 'none', color: 'var(--danger-accent)', fontSize: '0.75rem', cursor: 'pointer' }}
+                          >
+                            Remove
+                          </button>
                         )}
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: 'var(--surface-color)', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center', fontSize: '0.875rem' }}>
-                          <UploadCloud size={16} /> {uploadingImage ? '...' : formData.image ? 'Change' : 'Upload Image'}
-                          <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploadingImage} />
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: '1.3' }}>
+                        Shown on homepage & categories page grid cards.
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {formData.image ? (
+                          <img src={formData.image} alt="Card preview" style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-color)' }} />
+                        ) : (
+                          <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'var(--bg-color)', border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '10px' }}>
+                            Card
+                          </div>
+                        )}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.85rem', background: 'var(--bg-color)', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center', fontSize: '0.8rem' }}>
+                          <UploadCloud size={15} /> {uploadingImage ? 'Uploading...' : formData.image ? 'Change' : 'Upload Card'}
+                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'image')} style={{ display: 'none' }} disabled={uploadingImage} />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* 2. Section Image */}
+                    <div style={{ padding: '0.875rem', background: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        <label style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>2. Section Image</label>
+                        {formData.sectionImage && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, sectionImage: '' }))}
+                            style={{ background: 'none', border: 'none', color: 'var(--danger-accent)', fontSize: '0.75rem', cursor: 'pointer' }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: '1.3' }}>
+                        Shown on top hamburger when exploring & header banner.
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {formData.sectionImage ? (
+                          <img src={formData.sectionImage} alt="Section preview" style={{ width: '64px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-color)' }} />
+                        ) : (
+                          <div style={{ width: '64px', height: '48px', borderRadius: '8px', background: 'var(--bg-color)', border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '10px' }}>
+                            Banner
+                          </div>
+                        )}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.85rem', background: 'var(--bg-color)', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center', fontSize: '0.8rem' }}>
+                          <UploadCloud size={15} /> {uploadingSectionImage ? 'Uploading...' : formData.sectionImage ? 'Change' : 'Upload Section'}
+                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'sectionImage')} style={{ display: 'none' }} disabled={uploadingSectionImage} />
                         </label>
                       </div>
                     </div>

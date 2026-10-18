@@ -21,6 +21,7 @@ import { Crawler } from './pages/Crawler';
 import { GiftBuilder } from './pages/GiftBuilder';
 import { Subscribers } from './pages/Subscribers';
 import { ComposeMail } from './pages/ComposeMail';
+import { Testimonials } from './pages/Testimonials';
 import { Toaster } from 'sonner';
 import { SWRConfig } from 'swr';
 
@@ -67,6 +68,7 @@ const App: React.FC = () => {
             <Route path="users" element={<Users />} />
             <Route path="coupons" element={<Coupons />} />
             <Route path="reviews" element={<Reviews />} />
+            <Route path="testimonials" element={<Testimonials />} />
             <Route path="payments" element={<Payments />} />
             <Route path="pages" element={<Pages />} />
             <Route path="pages/new" element={<PageForm />} />

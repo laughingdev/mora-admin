@@ -24,6 +24,17 @@ export const Reviews: React.FC = () => {
     }
   };
 
+  const handleToggleFeatured = async (id: string, isFeatured: boolean) => {
+    const toastId = toast.loading(isFeatured ? 'Featuring review on homepage...' : 'Removing from featured reviews...');
+    try {
+      await api.patch(`/admin/reviews/${id}`, { isFeatured });
+      mutate();
+      toast.success(isFeatured ? 'Review featured on homepage' : 'Review removed from homepage', { id: toastId });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update featured status', { id: toastId });
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to permanently delete this review?')) return;
     const toastId = toast.loading('Deleting review...');
@@ -62,7 +73,7 @@ export const Reviews: React.FC = () => {
             {reviews.map((review: any) => (
               <div key={review.id} className="review-card">
                 {/* Status Indicator Bar */}
-                <div className={`review-card-status-bar ${review.isApproved ? 'approved' : 'pending'}`} />
+                <div className={`review-card-status-bar ${review.isApproved ? (review.isFeatured ? 'approved' : 'approved') : 'pending'}`} style={review.isFeatured ? { background: '#f59e0b' } : undefined} />
 
                 {/* Desktop Product Thumbnail */}
                 <div className="review-thumb review-desktop-only">
@@ -159,11 +170,38 @@ export const Reviews: React.FC = () => {
 
                   {/* Footer Bar */}
                   <div className="review-footer">
-                    <span className={`review-badge ${review.isApproved ? 'approved' : 'pending'}`}>
-                      {review.isApproved ? '● APPROVED' : '⏳ PENDING APPROVAL'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span className={`review-badge ${review.isApproved ? 'approved' : 'pending'}`}>
+                        {review.isApproved ? '● APPROVED' : '⏳ PENDING APPROVAL'}
+                      </span>
+                      {review.isFeatured && (
+                        <span className="review-badge" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700 }}>
+                          <Star size={12} fill="#b45309" color="#b45309" /> FEATURED ON HOMEPAGE
+                        </span>
+                      )}
+                    </div>
 
                     <div className="review-actions-group">
+                      {/* Featured Toggle Star (Only available for Approved Reviews) */}
+                      {review.isApproved && (
+                        <button
+                          type="button"
+                          className="review-btn"
+                          onClick={() => handleToggleFeatured(review.id, !review.isFeatured)}
+                          style={{
+                            background: review.isFeatured ? '#fef3c7' : 'transparent',
+                            color: review.isFeatured ? '#b45309' : 'var(--text-secondary)',
+                            border: `1px solid ${review.isFeatured ? '#f59e0b' : 'var(--border-color)'}`,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                          title={review.isFeatured ? 'Unmark as featured on homepage' : 'Mark as featured review on homepage'}
+                        >
+                          <Star size={15} fill={review.isFeatured ? '#b45309' : 'none'} color={review.isFeatured ? '#b45309' : 'currentColor'} />
+                          {review.isFeatured ? 'Featured' : 'Feature'}
+                        </button>
+                      )}
+
                       {!review.isApproved ? (
                         <>
                           <button

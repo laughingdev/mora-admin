@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useSearchParams, useLocation } from 'react-router';
-import { LayoutDashboard, Users, ShoppingCart, Package, Settings, LogOut, Bell, FolderTree, Menu, X, ChevronLeft, ChevronRight, Search, Ticket, MessageSquare, CreditCard, FileText, PenTool, Calendar, SlidersHorizontal, Gift, Mail } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingCart, Package, Settings, LogOut, Bell, FolderTree, Menu, X, ChevronLeft, ChevronRight, Search, Ticket, MessageSquare, CreditCard, FileText, PenTool, Calendar, SlidersHorizontal, Gift, Mail, Video } from 'lucide-react';
 
 const TopbarSearch = React.memo(() => {
   const location = useLocation();
@@ -75,6 +75,7 @@ export const AdminLayout: React.FC = () => {
     { name: 'Pages', path: '/pages', icon: <FileText size={20} /> },
     { name: 'Blogs', path: '/blogs', icon: <PenTool size={20} /> },
     { name: 'Reviews', path: '/reviews', icon: <MessageSquare size={20} /> },
+    { name: 'Video Testimonials', path: '/testimonials', icon: <Video size={20} /> },
     { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 
